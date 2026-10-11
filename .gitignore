@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+dist/
+build/
+*.egg-info/
+
+# API keys and environment files
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Local databases and runtime data
+*.db
+*.sqlite
+*.sqlite3
+*.db-*
+*.sqlite3-*
+logs/
+data/
+.cl-ai/
+
+# Terraform sensitive files
+*.tfstate
+*.tfstate.*
+*.tfplan
+tfplan
+*.tfvars
+*.tfvars.json
+.terraform/
+
+# IDE and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
