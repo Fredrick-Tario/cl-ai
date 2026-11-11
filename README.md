@@ -1,14 +1,14 @@
 # CL-AI
 
-**An AI-powered DevOps/SRE terminal companion built to simplify learning, troubleshooting, and managing complex commands.**
+**An AI-powered DevOps/SRE terminal companion for understanding, managing, and reusing complex commands.**
 
-CL-AI was inspired by [**FailSafe E-Commerce**](https://github.com/Fredrick-Tario/failsafe-ecommerce), my ongoing enterprise-style DevOps/SRE sandbox. Working across **Linux, Docker, Terraform, Azure, and Kubernetes**, I encountered complex commands, different troubleshooting approaches, and the challenge of remembering useful solutions.
+CL-AI was inspired by [**FailSafe E-Commerce**](https://github.com/Fredrick-Tario/failsafe-ecommerce), my ongoing enterprise-style DevOps/SRE sandbox. Working with **Linux, Docker, Terraform, Azure, and Kubernetes**, I encountered complex commands, different troubleshooting approaches, and the challenge of remembering useful solutions.
 
-To address this, I built **CL-AI**, a Python-based terminal assistant integrated with **NVIDIA NIM for LLM-powered assistance**. It helps me **understand, document, save, organize, and retrieve commands**, with AI-generated explanations and access to official documentation.
+I built **CL-AI**, a Python-based terminal assistant integrated with **NVIDIA NIM**, to explain, document, save, organize, and retrieve commands with AI-powered assistance and access to official documentation.
 
-**The bigger vision:** Evolve CL-AI into an **AI-assisted SRE troubleshooting companion** that tracks incidents, remembers successful and failed fixes, generates reusable runbooks, analyzes Terraform changes, and performs permission-based diagnostics using real evidence.
+**The bigger vision:** Evolve into an **AI-assisted SRE troubleshooting companion** with incident tracking, successful and failed fix histories, reusable runbooks, Terraform change analysis, and user-approved, evidence-based diagnostics.
 
-**The goal:** Build a growing knowledge base of useful commands and verified solutions, spend less time searching and relearning, and focus more on **troubleshooting, learning, and building infrastructure.**
+**The goal:** Build a reliable knowledge base of useful commands and verified solutions - spending less time searching and relearning, and more time **troubleshooting, learning, and building infrastructure.**
 
 > CL-AI is an assistant, not an autonomous operator. It never executes AI-suggested shell commands or makes infrastructure changes on your behalf.
 
