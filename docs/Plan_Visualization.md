@@ -11,5 +11,3 @@
          v                                v                                v                                v
    COMMAND LIBRARY                ERROR + FIX HISTORY              TERRAFORM HISTORY               AI-ASSISTED DIAGNOSIS
 
-
-   Using all the error logs and mistakes that I made, cl-Ai would learn it 
