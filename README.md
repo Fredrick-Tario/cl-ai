@@ -1,8 +1,16 @@
 # CL-AI
 
-**An AI-powered command companion for DevOps and SRE workflows right in your terminal.**
+**An AI-powered DevOps/SRE command companion inspired by my hands-on infrastructure learning journey.**
 
-CL-AI helps developers **understand, save, organize, and retrieve terminal commands** without losing useful commands in shell history or scattered notes. It combines conversational AI, a persistent SQLite Command Vault, Git Bash integration, and online research grounded in official documentation.
+CL-AI was born while building [**FailSafe E-Commerce**](https://github.com/Fredrick-Tario/failsafe-ecommerce), my ongoing enterprise-style microservices sandbox for practicing DevOps, cloud infrastructure, and Site Reliability Engineering.
+
+Working across **Linux, Docker, Terraform, Azure, and Kubernetes**, I encountered countless commands, complex syntax, and different ways to accomplish tasks. Keeping track of useful commands and repeatedly searching documentation became a challenge.
+
+So I built **CL-AI**, a Python-based terminal assistant that helps me **understand commands, generate AI-powered explanations, save and organize them, retrieve them quickly, and explore official documentation** all from the terminal.
+
+**The bigger vision:** Evolve CL-AI beyond a command companion into an **AI-assisted DevOps/SRE troubleshooting tool** that can track real errors, remember successful and failed fixes, generate reusable runbooks, analyze Terraform infrastructure changes, and eventually investigate issues through permission-based diagnostics grounded in actual evidence.
+
+**The goal:** Spend less time searching and relearning commands, build a reliable collection of useful and verified solutions, and spend more time **troubleshooting, learning, and building infrastructure.**
 
 **Current version:** `v0.1.0` · **Platform:** Windows / Git Bash (including the VS Code integrated terminal) · **Status:** Functional v0.1; additional capabilities are planned
 
