@@ -76,6 +76,11 @@ class HelpCommand(BaseModel):
     risk_level: RiskLevel
     risk_notes: list[str] = Field(default_factory=list, max_length=5)
 
+    @field_validator("risk_notes", mode="before")
+    @classmethod
+    def accept_single_risk_note(cls, value):
+        return [value] if isinstance(value, str) else value
+
     @field_validator("command", "explanation")
     @classmethod
     def strip_required_text(cls, value: str) -> str:
@@ -93,6 +98,11 @@ class HelpResearch(BaseModel):
     commands: list[HelpCommand] = Field(default_factory=list, max_length=8)
     warnings: list[str] = Field(default_factory=list, max_length=8)
     documents: list[WebDocument] = Field(default_factory=list)
+
+    @field_validator("prerequisites", "warnings", mode="before")
+    @classmethod
+    def accept_single_list_item(cls, value):
+        return [value] if isinstance(value, str) else value
 
 
 class _SearchParser(HTMLParser):

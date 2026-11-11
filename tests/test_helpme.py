@@ -64,6 +64,22 @@ def test_online_help_uses_retrieved_sources_and_validates_commands() -> None:
     assert result.documents[0].url.startswith("https://developer.hashicorp.com/")
 
 
+def test_online_help_normalizes_single_string_list_fields() -> None:
+    data = json.loads(response_json())
+    data["prerequisites"] = "Docker Compose is installed."
+    data["warnings"] = "The command does not start containers."
+    data["commands"][0]["risk_notes"] = "Read-only status command."
+
+    result = OnlineHelpService(
+        FakeProvider(json.dumps(data)),
+        FakeRetriever(),
+    ).research("docker compose ps")
+
+    assert result.prerequisites == ["Docker Compose is installed."]
+    assert result.warnings == ["The command does not start containers."]
+    assert result.commands[0].risk_notes == ["Read-only status command."]
+
+
 def test_online_help_rejects_fabricated_source_index() -> None:
     command = json.loads(response_json())["commands"][0]
     command["source_indices"] = [99]

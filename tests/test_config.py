@@ -82,6 +82,22 @@ def test_nvidia_nim_uses_generic_openai_compatible_settings(tmp_path: Path) -> N
     assert "private-test-value" not in repr(settings)
 
 
+def test_legacy_nvidia_endpoint_has_correct_name_and_help_timeout(tmp_path: Path) -> None:
+    env_file = tmp_path / ".env"
+    env_file.write_text(
+        "AI_PROVIDER=qwen\n"
+        "QWEN_API_KEY=private-test-value\n"
+        "QWEN_BASE_URL=https://integrate.api.nvidia.com/v1\n"
+        "QWEN_MODEL=test-model\n",
+        encoding="utf-8",
+    )
+
+    settings = load_settings(env_file)
+
+    assert settings.provider_display_name == "NVIDIA NIM"
+    assert settings.helpme_ai_timeout_seconds == 120.0
+
+
 def test_blank_generic_values_fall_back_to_legacy_qwen_settings(tmp_path: Path) -> None:
     env_file = tmp_path / ".env"
     env_file.write_text(

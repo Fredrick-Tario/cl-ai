@@ -57,6 +57,7 @@ class Settings(BaseSettings):
     clai_max_ai_requests_per_session: int = Field(default=30, ge=1, le=1000)
     ai_timeout_seconds: float | None = Field(default=None, gt=0, le=300)
     qwen_timeout_seconds: float = Field(default=30.0, gt=0, le=300)
+    helpme_ai_timeout_seconds: float = Field(default=120.0, gt=0, le=300)
     web_timeout_seconds: float = Field(default=15.0, gt=0, le=60)
 
     model_config = SettingsConfigDict(
@@ -135,6 +136,9 @@ class Settings(BaseSettings):
     def provider_display_name(self) -> str:
         if self.ai_provider_name:
             return self.ai_provider_name
+        endpoint_host = (getattr(self.base_url, "host", "") or "").casefold()
+        if endpoint_host == "nvidia.com" or endpoint_host.endswith(".nvidia.com"):
+            return "NVIDIA NIM"
         return {
             "qwen": "Qwen Cloud",
             "nvidia_nim": "NVIDIA NIM",

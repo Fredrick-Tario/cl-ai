@@ -525,7 +525,15 @@ def find_commands(
 
 def _research_help(question: str):
     settings = load_settings()
-    provider = create_provider(settings)
+    help_settings = settings.model_copy(
+        update={
+            "ai_timeout_seconds": max(
+                settings.timeout_seconds,
+                settings.helpme_ai_timeout_seconds,
+            )
+        }
+    )
+    provider = create_provider(help_settings)
     service = OnlineHelpService(
         provider,
         WebRetriever(timeout=settings.web_timeout_seconds),

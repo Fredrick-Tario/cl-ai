@@ -19,6 +19,7 @@ class QwenProvider(AIProvider):
 
     def __init__(self, settings: Settings, client: Any | None = None) -> None:
         self._provider_name = settings.provider_display_name
+        self._timeout_seconds = settings.timeout_seconds
         if client is not None:
             self._client = client
             return
@@ -42,11 +43,7 @@ class QwenProvider(AIProvider):
         try:
             response = self._client.invoke([self._to_langchain(item) for item in messages])
         except Exception as exc:
-            provider_name = getattr(self, "_provider_name", "Qwen")
-            raise ProviderError(
-                f"{provider_name} request failed. Check your network, model ID, region, "
-                "base URL, API-key permissions, and account quota."
-            ) from exc
+            raise ProviderError(self._safe_request_error(exc)) from exc
 
         content = self._extract_text(response)
         if not content:
@@ -76,4 +73,30 @@ class QwenProvider(AIProvider):
             ]
             return "\n".join(part for part in parts if part).strip()
         return ""
+
+    def _safe_request_error(self, error: Exception) -> str:
+        provider_name = getattr(self, "_provider_name", "Qwen")
+        timeout_seconds = getattr(self, "_timeout_seconds", None)
+        current: BaseException | None = error
+        status_code = None
+        while current is not None:
+            if "timeout" in type(current).__name__.casefold():
+                timeout_note = (
+                    f" after {timeout_seconds:g} seconds"
+                    if isinstance(timeout_seconds, (int, float))
+                    else ""
+                )
+                return f"{provider_name} request timed out{timeout_note}."
+            status_code = status_code or getattr(current, "status_code", None)
+            current = current.__cause__
+
+        if isinstance(status_code, int):
+            return (
+                f"{provider_name} request failed (HTTP {status_code}). "
+                "Check the model ID, endpoint, API-key permissions, and account quota."
+            )
+        return (
+            f"{provider_name} request failed. Check your network, model ID, region, "
+            "base URL, API-key permissions, and account quota."
+        )
 

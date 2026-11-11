@@ -50,6 +50,39 @@ def test_qwen_adapter_returns_safe_error() -> None:
         raise AssertionError("Expected ProviderError")
 
 
+def test_qwen_adapter_reports_timeout_without_upstream_details() -> None:
+    class OpenAITimeoutError(Exception):
+        pass
+
+    client = FakeClient(OpenAITimeoutError("sensitive upstream timeout detail"))
+    provider = QwenProvider.__new__(QwenProvider)
+    provider._client = client
+    provider._provider_name = "NVIDIA NIM"
+    provider._timeout_seconds = 30.0
+
+    with pytest.raises(ProviderError) as error:
+        provider.chat([ChatMessage("user", "hello")])
+
+    assert str(error.value) == "NVIDIA NIM request timed out after 30 seconds."
+    assert "sensitive upstream" not in str(error.value)
+
+
+def test_qwen_adapter_reports_http_status_without_response_body() -> None:
+    class StatusError(Exception):
+        status_code = 429
+
+    client = FakeClient(StatusError("sensitive response body"))
+    provider = QwenProvider.__new__(QwenProvider)
+    provider._client = client
+    provider._provider_name = "NVIDIA NIM"
+
+    with pytest.raises(ProviderError) as error:
+        provider.chat([ChatMessage("user", "hello")])
+
+    assert "HTTP 429" in str(error.value)
+    assert "sensitive response body" not in str(error.value)
+
+
 def test_qwen_client_initialization_error_is_safe(monkeypatch) -> None:
     settings = Settings(
         qwen_api_key=SecretStr("fake-secret-value"),

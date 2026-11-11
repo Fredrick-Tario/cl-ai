@@ -116,6 +116,9 @@ summarize that retrieved evidence. It uses free public DuckDuckGo HTML search
 with a Bing HTML fallback; no paid search service or search API key is required.
 Public search markup can change, so failures are reported rather than hidden.
 Network access and the configured model endpoint are required.
+Online-documentation synthesis uses a separate 120-second timeout by default
+because it processes retrieved evidence; configure `HELPME_AI_TIMEOUT_SECONDS`
+if your compatible endpoint needs a different bounded value.
 
 ```bash
 cl-ai helpme "What does terraform import do?"
