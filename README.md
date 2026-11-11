@@ -1,18 +1,14 @@
 # CL-AI
 
-**An AI-powered DevOps/SRE command companion inspired by my hands-on infrastructure learning journey.**
+**An AI-powered DevOps/SRE terminal companion built to simplify learning, troubleshooting, and managing complex commands.**
 
-CL-AI was born while building [**FailSafe E-Commerce**](https://github.com/Fredrick-Tario/failsafe-ecommerce), my ongoing enterprise-style microservices sandbox for practicing DevOps, cloud infrastructure, and Site Reliability Engineering.
+CL-AI was inspired by [**FailSafe E-Commerce**](https://github.com/Fredrick-Tario/failsafe-ecommerce), my ongoing enterprise-style DevOps/SRE sandbox. Working across **Linux, Docker, Terraform, Azure, and Kubernetes**, I encountered complex commands, different troubleshooting approaches, and the challenge of remembering useful solutions.
 
-Working across **Linux, Docker, Terraform, Azure, and Kubernetes**, I encountered countless commands, complex syntax, and different ways to accomplish tasks. Keeping track of useful commands and repeatedly searching documentation became a challenge.
+To address this, I built **CL-AI**, a Python-based terminal assistant integrated with **NVIDIA NIM for LLM-powered assistance**. It helps me **understand, document, save, organize, and retrieve commands**, with AI-generated explanations and access to official documentation.
 
-So I built **CL-AI**, a Python-based terminal assistant that helps me **understand commands, generate AI-powered explanations, save and organize them, retrieve them quickly, and explore official documentation** all from the terminal.
+**The bigger vision:** Evolve CL-AI into an **AI-assisted SRE troubleshooting companion** that tracks incidents, remembers successful and failed fixes, generates reusable runbooks, analyzes Terraform changes, and performs permission-based diagnostics using real evidence.
 
-**The bigger vision:** Evolve CL-AI beyond a command companion into an **AI-assisted DevOps/SRE troubleshooting tool** that can track real errors, remember successful and failed fixes, generate reusable runbooks, analyze Terraform infrastructure changes, and eventually investigate issues through permission-based diagnostics grounded in actual evidence.
-
-**The goal:** Spend less time searching and relearning commands, build a reliable collection of useful and verified solutions, and spend more time **troubleshooting, learning, and building infrastructure.**
-
-**Current version:** `v0.1.0` · **Platform:** Windows / Git Bash (including the VS Code integrated terminal) · **Status:** Functional v0.1; additional capabilities are planned
+**The goal:** Build a growing knowledge base of useful commands and verified solutions, spend less time searching and relearning, and focus more on **troubleshooting, learning, and building infrastructure.**
 
 > CL-AI is an assistant, not an autonomous operator. It never executes AI-suggested shell commands or makes infrastructure changes on your behalf.
 
