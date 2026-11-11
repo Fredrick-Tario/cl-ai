@@ -1,6 +1,6 @@
 # CL-AI
 
-**An AI-powered command companion for DevOps and SRE workflows—right in your terminal.**
+**An AI-powered command companion for DevOps and SRE workflows right in your terminal.**
 
 CL-AI helps developers **understand, save, organize, and retrieve terminal commands** without losing useful commands in shell history or scattered notes. It combines conversational AI, a persistent SQLite Command Vault, Git Bash integration, and online research grounded in official documentation.
 
