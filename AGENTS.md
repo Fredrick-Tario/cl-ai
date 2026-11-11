@@ -1,6 +1,3 @@
-
-# CL-AI — Codex Development Instructions
-
 ## Project Overview
 CL-AI is a conversational, terminal-first AI assistant
 focused on DevOps, SRE, and future MLOps.
@@ -27,7 +24,7 @@ Use this document as the primary reference for:
 
 ## Technology Stack
 - Python
-- Qwen Cloud API as the primary CL-AI model provider
+- NVIDIA NIM as the primary CL-AI model provider
 - LangChain
 - SQLite
 - Typer
@@ -52,10 +49,3 @@ Use this document as the primary reference for:
 - Never send unfiltered sensitive logs to cloud APIs.
 - Do not automatically execute destructive commands.
 - Require explicit approval before changing infrastructure.
-
-## Collaboration
-- Explain the proposed approach before major changes.
-- Identify files that will be created or modified.
-- Keep changes small and testable.
-- Report tests performed and any remaining limitations.
-- Do not implement future versions without approval.

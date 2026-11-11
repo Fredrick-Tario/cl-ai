@@ -1,181 +1,258 @@
 # CL-AI
 
-CL-AI is a conversational, terminal-first AI assistant focused on DevOps, SRE,
-and future MLOps.
+**An AI-powered command companion for DevOps and SRE workflows—right in your terminal.**
 
-## Project Status
+CL-AI helps developers **understand, save, organize, and retrieve terminal commands** without losing useful commands in shell history or scattered notes. It combines conversational AI, a persistent SQLite Command Vault, Git Bash integration, and online research grounded in official documentation.
 
-CL-AI v0.1 is implemented: conversational chat, SQLite Command Vault,
-structured AI command documentation, opt-in Git Bash command awareness,
-natural-language Vault retrieval, and official online documentation research.
+**Current version:** `v0.1.0` · **Platform:** Windows / Git Bash (including the VS Code integrated terminal) · **Status:** Functional v0.1; additional capabilities are planned
 
-Later roadmap items are not implemented: v0.2 runbooks/error tracking, v0.3
-Terraform plan/deployment history, v0.4 troubleshooting agent, and v1.0 release
-hardening. CL-AI does not autonomously execute shell or infrastructure commands.
+> CL-AI is an assistant, not an autonomous operator. It never executes AI-suggested shell commands or makes infrastructure changes on your behalf.
 
-See the approved [CL-AI Development Plan](docs/CL-AI-PLAN.md) for the roadmap and
-security boundaries.
+## Highlights
 
-## Technology
+| Feature | What it does |
+| --- | --- |
+| **Terminal AI chat** | Explains DevOps concepts and commands in plain language through a configured AI provider. |
+| **AI command documentation** | Generates a title, category, explanation, flag breakdown, tags, and risk notes before you save a command. |
+| **SQLite Command Vault** | Stores commands locally with metadata, provenance, and verification state. Supports saving, listing, viewing, editing, and deleting. |
+| **Natural-language search** | Finds **existing saved commands** by intent or keywords, with optional category filters. Does not invent matches. |
+| **Official documentation research** | Researches questions through live public documentation retrieval, displays sources, and can save a selected suggested command. |
+| **Git Bash history capture** | Opt-in `save-last` integration captures a previous shell command for review without executing it again. |
+| **Safety checks** | Rejects recognizable embedded credentials, flags selected risky commands, and requires review before saving. |
 
-- Python 3.11+
-- Configurable OpenAI-compatible endpoint (Qwen, NVIDIA NIM, or personal API)
-- LangChain
-- SQLite with FTS5
-- Typer, Rich, and Prompt Toolkit
-- Pydantic and Pytest
-
-## Installation
-
-From Git Bash on Windows:
+## See CL-AI in Action
 
 ```bash
+# Ask the AI to explain a command (interactive conversation)
+cl-ai
+
+# Generate documentation and save a command
+cl-ai save "git log --oneline -5"
+
+# Search commands that are already in your Vault
+cl-ai find "recent Git commits"
+
+# Research official documentation and show the source URLs
+cl-ai helpme "What does docker compose ps do?"
+
+# View your saved commands
+cl-ai list
+```
+
+A saved command has a reviewable record that may include its exact text, title, description, important flags, tags, risk level, source, working directory, timestamp, and verification status. **Saved does not mean executed or verified.**
+
+<!-- When your REAL terminal screenshots are ready, add them to
+     assets/screenshots/ and uncomment the following lines.
+
+![AI-generated command documentation](assets/screenshots/ai-documentation.png)
+![Command Vault and search](assets/screenshots/command-vault.png)
+![Official documentation help](assets/screenshots/online-help.png)
+-->
+
+## How It Works
+
+```mermaid
+flowchart TD
+    User["Git Bash / VS Code Terminal"] --> CLI["CL-AI · Typer + Rich"]
+    CLI --> Chat["Interactive Chat"]
+    CLI --> Vault["Command Vault & Search"]
+    CLI --> Help["Official Documentation Help"]
+    CLI --> Bash["Opt-in Bash History Capture"]
+    Chat --> AI["OpenAI-compatible Model Adapter"]
+    Vault --> DB[("Local SQLite / FTS5")]
+    Vault --> AI
+    Help --> Docs["Retrieved Official Documentation"]
+    Help --> AI
+    Bash --> Vault
+```
+
+**Python handles** command capture, validation, risk checks, and local storage. **The AI model handles** explanations and structured summaries. **You control** what is saved and which commands are actually run in your terminal.
+
+## Tech Stack
+
+| Area | Technologies |
+| --- | --- |
+| Application | Python 3.11+, Typer, Rich, Prompt Toolkit |
+| AI integration | LangChain, OpenAI-compatible API endpoints (including NVIDIA NIM and Qwen) |
+| Validation | Pydantic |
+| Local persistence and retrieval | SQLite, FTS5 |
+| Testing | Pytest with mocked model and web responses |
+| Shell | Git Bash integration (opt-in) |
+
+## Quick Start
+
+### 1. Requirements
+
+- Windows with Git Bash (or the Git Bash terminal in VS Code)
+- Python **3.11 or newer**
+- Internet access and your own supported model API credentials **for AI chat, AI documentation, and online help**
+
+Local Command Vault commands with `--no-ai` work without AI credentials.
+
+### 2. Install
+
+```bash
+git clone https://github.com/Fredrick-Tario/cl-ai.git
+cd cl-ai
+
 python -m venv .venv
 source .venv/Scripts/activate
 python -m pip install -e ".[dev]"
+
 cl-ai --version
+cl-ai --help
 ```
 
-If you do not already have a local `.env`, copy `.env.example` to `.env` and
-fill in your own provider values. Never overwrite an existing `.env`, and never
-commit or share it.
+### 3. Configure an AI provider
 
-Existing Qwen configuration remains supported:
+Create a local `.env` from the committed template **only if you don't have one yet**:
 
-```dotenv
-AI_PROVIDER=qwen
-QWEN_API_KEY=your-private-value
-QWEN_BASE_URL=https://your-provider.example/v1
-QWEN_MODEL=your-model-id
+```bash
+test -f .env || cp .env.example .env
 ```
 
-For NVIDIA NIM or another OpenAI-compatible personal endpoint, use the generic
-settings. Confirm the endpoint, available model, quota, and pricing in your own
-provider account; CL-AI does not assume any model API is free.
+For **NVIDIA NIM**, set the following values in `.env`:
 
 ```dotenv
 AI_PROVIDER=nvidia_nim
-AI_API_KEY=your-private-value
+AI_API_KEY=replace-with-your-own-api-key
 AI_BASE_URL=https://integrate.api.nvidia.com/v1
-AI_MODEL=your-compatible-model-id
+AI_MODEL=replace-with-a-model-id-available-to-your-account
 ```
 
-Use `AI_PROVIDER=openai_compatible` and optionally `AI_PROVIDER_NAME` for a
-different compatible endpoint. API keys are masked by configuration objects and
-are never printed intentionally.
+For another compatible endpoint, select `AI_PROVIDER=openai_compatible` and optionally set `AI_PROVIDER_NAME`. Existing Qwen-specific `QWEN_*` settings remain supported with `AI_PROVIDER=qwen`.
 
-## Conversational Chat
+**Never commit `.env` or include real API credentials in screenshots.** Model access, quotas, pricing, and supported model IDs depend on the provider and your account.
 
-Run `cl-ai` with no subcommand. The banner displays the configured provider.
-If you type a terminal command such as `cl-ai list` inside chat, CL-AI tells you
-to exit and run it in Git Bash; that text is not sent to the model. Chat does
-not provide an unrestricted shell or execute model suggestions.
-
-## Command Vault
-
-The Vault database is stored under `~/.cl-ai/cl_ai.db` unless `CLAI_DATA_DIR`
-is configured. Saving never executes a command or proves it worked.
+### 4. Start a conversation
 
 ```bash
+cl-ai
+```
+
+Ask a question such as:
+
+```text
+Explain the difference between terraform plan and terraform apply.
+```
+
+Type `exit` to return to Git Bash. CL-AI commands such as `cl-ai list` must be run **outside** the chat prompt; the chat interface reminds you of this rather than pretending to execute them.
+
+## Command Reference
+
+### Save, inspect, and manage commands
+
+```bash
+# AI-generated documentation + review before saving
 cl-ai save "docker compose ps"
-cl-ai save "docker compose ps" --no-ai
+
+# Save locally without contacting the AI provider
+cl-ai save "git status --short" --title "Check Git changes" --no-ai
+
+# Save without the final confirmation prompt
+cl-ai save "kubectl get pods" --no-ai --yes
+
+# View and manage records
 cl-ai list
+cl-ai list --limit 10
+cl-ai list --category Docker
 cl-ai show 1
 cl-ai edit 1
 cl-ai delete 1
 ```
 
-By default, `save` sends secret-checked command text to the configured AI
-provider for structured documentation and shows a Save/Edit/Cancel review.
-Documentation includes a title, category, description, command breakdown, tags,
-risk level, model ID, and provenance. `--no-ai` keeps the save local.
+`show`, `edit`, and `delete` use record IDs displayed by `cl-ai list`. Deletion is permanent in v0.1; automatic backup and restore are not implemented.
 
-CL-AI rejects obvious embedded credentials, performs deterministic risk checks,
-recognizes exact duplicates, validates model JSON, and asks before writing.
-Delete has no undo in v0.1; backup/import/export is future work.
-
-## Find Saved Commands
-
-`find` searches only real SQLite records across command text, titles,
-descriptions, and tags. It never invents a replacement when there is no match.
+### Find commands you have already saved
 
 ```bash
-cl-ai find "What did I use to inspect Terraform plans?"
-cl-ai find "Compose service status" --category Docker
-cl-ai list --category Terraform
+cl-ai find "check running Docker services"
+cl-ai find "recent commits" --category Git
+cl-ai find "Kubernetes pods" --limit 5
 ```
 
-Matches show the exact command, purpose, saved directory, command source,
-documentation URLs when present, and verification state.
+Search uses actual SQLite records. If there is no match, CL-AI reports that instead of generating a fictional command. For a command you haven't saved, use `helpme` to research documentation instead.
 
-## Online Documentation Help
-
-`helpme` performs a real online search, accepts only supported official
-documentation domains, fetches the pages, and asks the configured model to
-summarize that retrieved evidence. It uses free public DuckDuckGo HTML search
-with a Bing HTML fallback; no paid search service or search API key is required.
-Public search markup can change, so failures are reported rather than hidden.
-Network access and the configured model endpoint are required.
-Online-documentation synthesis uses a separate 120-second timeout by default
-because it processes retrieved evidence; configure `HELPME_AI_TIMEOUT_SECONDS`
-if your compatible endpoint needs a different bounded value.
+### Research official documentation
 
 ```bash
+cl-ai helpme "What does docker compose ps do?"
+cl-ai helpme "How do I inspect Kubernetes Pod logs?"
 cl-ai helpme "What does terraform import do?"
-cl-ai helpme "How do I inspect Docker Compose service logs?"
-cl-ai -helpme "What does git restore do?"
 ```
 
-Output distinguishes documented examples from AI-adapted suggestions, includes
-risk warnings, and prints retrieved source URLs. Suggested commands are never
-executed. To review and save a numbered suggestion with its source URL:
+The feature retrieves public documentation from supported official sources, then asks the model to explain the retrieved evidence. Results can include suggested commands, prerequisites, risk warnings, and source URLs.
+
+To review and save a numbered suggestion from a research result:
 
 ```bash
 cl-ai helpme "What does terraform import do?" --save 1
 ```
 
-If search fails, no supported official source is found, the model API fails, or
-the model cites a source that was not retrieved, CL-AI reports the failure and
-does not accept or save the proposed output.
+The `--save` option **runs the research again**, so review the numbered results from that invocation before confirming. Suggested commands are never executed. Documentation availability depends on live websites and your AI endpoint.
 
-## Git Bash Command Awareness
+### Capture your previous Git Bash command
 
-Enable the opt-in wrapper for the current session:
+Enable the optional shell wrapper in your **current** Git Bash session:
 
 ```bash
 source <(cl-ai shell-init)
 ```
 
-Then explicitly capture the previous non-CL-AI history entry:
+Then:
 
 ```bash
-docker compose ps
-cl-ai save-last
+git status --short
+cl-ai save-last --no-ai
 
-terraform plan
-cl-ai save the command
+# Alternative wording supported by the Bash wrapper:
+git log -1 --oneline
+cl-ai save the command --no-ai
 ```
 
-The wrapper checks up to 20 history entries, sends command text through standard
-input, and never reruns it. If history is unavailable, CL-AI asks for a manual
-paste. Add `source <(cl-ai shell-init)` to `~/.bashrc` manually if desired.
+The wrapper searches recent history for a non-CL-AI command, previews it, and sends the text to CL-AI for review. It **does not rerun the command or recover its previous output**. If history isn't available, manual paste is offered.
 
-## Tests
+To enable the wrapper in future Git Bash sessions, you can manually add `source <(cl-ai shell-init)` to your `~/.bashrc`.
 
-Automated tests mock model and online-retrieval behavior; they make no billable
-cloud requests:
+## Privacy, Safety, and Limitations
+
+- **Local by default:** Vault records are stored at `~/.cl-ai/cl_ai.db`, or under your configured `CLAI_DATA_DIR`.
+- **No implicit execution:** CL-AI saves and suggests command text, but does not run shell commands or apply infrastructure changes on your behalf.
+- **Secret awareness:** Known literal credential patterns are rejected before storage or AI documentation. This is a safeguard, not a guarantee of detecting every secret.
+- **Risk awareness:** Selected dangerous or cost-incurring commands receive additional risk warnings; AI-generated explanations still require review.
+- **Source transparency:** Online-help answers are based on retrieved official documentation and display their sources. Retrieval can fail when external search or documentation sites change.
+- **Verification matters:** A command being saved or suggested is not evidence that it succeeded.
+- **No autonomous operations:** v0.1 does not inspect your running infrastructure, capture logs, execute diagnostics, manage incidents, or generate runbooks.
+
+## Testing
+
+The test suite uses mocked model and web responses, so automated tests do not require live paid AI requests.
 
 ```bash
-python -m pytest
+python -m pytest -q
 ```
 
-## Security and Limitations
+For a live smoke test, use a separate data directory to avoid changing your everyday Vault:
 
-CL-AI uses environment variables for credentials, parameterized SQLite queries,
-bounded inputs, literal-secret detection, and risk warnings. Online pages are
-untrusted evidence, not permission to execute anything. A saved or researched
-command remains unverified until separate evidence says otherwise.
+```bash
+export CLAI_DATA_DIR="$PWD/data/demo"
+cl-ai save "git status --short" --no-ai --yes
+cl-ai list
+cl-ai find "git status"
+```
 
-v0.1 does not capture logs, generate runbooks, parse Terraform plans, track
-deployments, run diagnostics, or modify infrastructure. Those capabilities are
-reserved for approved later milestones.
+## Roadmap
+
+| Milestone | Scope | Status |
+| --- | --- | --- |
+| **v0.1 — Command Companion** | AI chat, Command Vault, structured AI documentation, search, official online help, Git Bash capture | **Implemented** |
+| **v0.2 — Incident Memory** | Error logs, troubleshooting attempts, verified outcomes, reusable runbooks | Planned |
+| **v0.3 — Terraform Insights** | Deterministic plan analysis and deployment history | Planned |
+| **v0.4 — Troubleshooting Agent** | Permission-based, evidence-grounded diagnostic assistance | Planned |
+| **v1.0 — Stable Release** | Packaging, deeper hardening, recovery/export, and end-to-end reliability | Planned |
+
+The detailed specifications and acceptance criteria are in [**CL-AI Development Plan**](docs/CL-AI-PLAN.md).
+
+---
+
+**Built as a hands-on exploration of AI-assisted developer tooling, practical DevOps workflows, and reliable, human-reviewed automation.**
