@@ -52,18 +52,34 @@ A saved command has a reviewable record that may include its exact text, title, 
 ## How It Works
 
 ```mermaid
+
 flowchart TD
-    User["Git Bash / VS Code Terminal"] --> CLI["CL-AI · Typer + Rich"]
-    CLI --> Chat["Interactive Chat"]
-    CLI --> Vault["Command Vault & Search"]
-    CLI --> Help["Official Documentation Help"]
-    CLI --> Bash["Opt-in Bash History Capture"]
-    Chat --> AI["OpenAI-compatible Model Adapter"]
-    Vault --> DB[("Local SQLite / FTS5")]
+    User["Git Bash /<br/>VS Code Terminal"]
+    CLI["CL-AI CLI<br/>Typer + Rich"]
+
+    Chat["Interactive<br/>AI Chat"]
+    Vault["Command Vault<br/>and Search"]
+    Help["Official Docs<br/>Help"]
+    Bash["Bash History<br/>Capture"]
+
+    AI["AI Provider<br/>Adapter"]
+    DB[("SQLite<br/>FTS5")]
+    Docs["Retrieved<br/>Official Docs"]
+
+    User --> CLI
+
+    CLI --> Chat
+    CLI --> Vault
+    CLI --> Help
+    CLI --> Bash
+
+    Chat --> AI
     Vault --> AI
-    Help --> Docs["Retrieved Official Documentation"]
-    Help --> AI
+    Vault --> DB
     Bash --> Vault
+    Help --> Docs
+    Help --> AI
+
 ```
 
 **Python handles** command capture, validation, risk checks, and local storage. **The AI model handles** explanations and structured summaries. **You control** what is saved and which commands are actually run in your terminal.
