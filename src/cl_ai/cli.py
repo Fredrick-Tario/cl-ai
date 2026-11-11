@@ -21,6 +21,7 @@ from cl_ai.config import (
     load_local_settings,
     load_settings,
 )
+from cl_ai.helpme import OnlineHelpError, OnlineHelpService, WebRetriever
 from cl_ai.shell import ShellCaptureError, read_captured_command
 from cl_ai.storage import Database, DatabaseError
 from cl_ai.vault.documenter import CommandDocumenter, DocumentationGenerationError
@@ -50,12 +51,22 @@ def main(
         bool | None,
         typer.Option("--version", callback=version_callback, is_eager=True),
     ] = None,
+    helpme_alias: Annotated[
+        str | None,
+        typer.Option(
+            "-helpme",
+            help="Research a question using current official online documentation.",
+        ),
+    ] = None,
 ) -> None:
     """Start chat with no command, or use a Command Vault subcommand."""
 
     del version
     if ctx.invoked_subcommand is not None:
         return
+    if helpme_alias is not None:
+        helpme_command(helpme_alias)
+        raise typer.Exit()
 
     console = Console()
     try:
@@ -70,6 +81,7 @@ def main(
         provider,
         settings.clai_max_ai_requests_per_session,
         console=console,
+        provider_name=settings.provider_display_name,
     )
 
 
@@ -130,6 +142,8 @@ def _record_panel(record: CommandRecord) -> Panel:
     )
     if record.ai_model:
         details.add_row("AI model", Text(record.ai_model))
+    if record.source_urls:
+        details.add_row("Source URLs", Text("\n".join(record.source_urls)))
     details.add_row(
         "Verification state",
         _verification_label(record.verification_state.value),
@@ -189,7 +203,7 @@ def _generate_documentation(command: str) -> tuple[CommandDocumentation, str]:
     settings = load_settings()
     provider = create_provider(settings)
     documentation = CommandDocumenter(provider).generate(command)
-    return documentation, settings.qwen_model
+    return documentation, settings.model_name
 
 
 def _edit_documentation(
@@ -252,6 +266,7 @@ def _save_command_workflow(
     yes: bool,
     no_ai: bool,
     source: CommandSource,
+    source_urls: list[str] | None = None,
 ) -> None:
     """Review and save command text without executing it."""
 
@@ -282,7 +297,7 @@ def _save_command_workflow(
                 return
         else:
             console.print(
-                "[cyan]Sending the secret-checked command to Qwen for "
+                "[cyan]Sending the secret-checked command to the configured AI provider for "
                 "documentation...[/cyan]"
             )
             documentation, ai_model = _generate_documentation(command)
@@ -328,6 +343,7 @@ def _save_command_workflow(
             documentation_source=documentation_source,
             ai_model=ai_model,
             source=source,
+            source_urls=source_urls,
         )
     except (
         ConfigurationError,
@@ -354,7 +370,7 @@ def save_command(
         bool,
         typer.Option(
             "--no-ai",
-            help="Save manually without sending the command to Qwen.",
+            help="Save manually without sending the command to the AI provider.",
         ),
     ] = False,
 ) -> None:
@@ -367,6 +383,7 @@ def save_command(
         yes=yes,
         no_ai=no_ai,
         source=CommandSource.PASTED,
+        source_urls=None,
     )
 
 
@@ -389,7 +406,7 @@ def save_last_command(
         bool,
         typer.Option(
             "--no-ai",
-            help="Save manually without sending the command to Qwen.",
+            help="Save manually without sending the command to the AI provider.",
         ),
     ] = False,
 ) -> None:
@@ -416,6 +433,7 @@ def save_last_command(
         yes=yes,
         no_ai=no_ai,
         source=source,
+        source_urls=None,
     )
 
 
@@ -437,12 +455,16 @@ def list_commands(
         int,
         typer.Option("--limit", min=1, max=500, help="Maximum records to show."),
     ] = 50,
+    category: Annotated[
+        str | None,
+        typer.Option("--category", help="Only show this technology category."),
+    ] = None,
 ) -> None:
     """List locally saved commands."""
 
     console = Console()
     try:
-        records = _create_vault().list(limit)
+        records = _create_vault().list(limit, category=category)
     except (ConfigurationError, DatabaseError, VaultError) as exc:
         _exit_with_error(exc)
 
@@ -465,6 +487,137 @@ def list_commands(
             _format_timestamp(record.created_at),
         )
     console.print(table)
+
+
+@app.command("find")
+def find_commands(
+    query: Annotated[str, typer.Argument(help="Natural-language Vault search.")],
+    category: Annotated[
+        str | None,
+        typer.Option("--category", help="Only search this technology category."),
+    ] = None,
+    limit: Annotated[
+        int,
+        typer.Option("--limit", min=1, max=50, help="Maximum matches to show."),
+    ] = 10,
+) -> None:
+    """Find real saved commands; no model-generated commands are added."""
+
+    console = Console()
+    try:
+        records = _create_vault().search(query, category=category, limit=limit)
+    except (ConfigurationError, DatabaseError, VaultError) as exc:
+        _exit_with_error(exc)
+
+    if not records:
+        console.print(
+            "No saved commands matched. CL-AI did not generate a replacement; "
+            "try different terms or use 'cl-ai helpme' for online research."
+        )
+        return
+
+    console.print(
+        f"[bold]Saved Vault matches ({len(records)})[/bold] - these are existing SQLite records."
+    )
+    for record in records:
+        console.print(_record_panel(record))
+
+
+def _research_help(question: str):
+    settings = load_settings()
+    provider = create_provider(settings)
+    service = OnlineHelpService(
+        provider,
+        WebRetriever(timeout=settings.web_timeout_seconds),
+    )
+    return service.research(question)
+
+
+@app.command("helpme")
+def helpme_command(
+    question: Annotated[
+        str,
+        typer.Argument(help="Question or command to research online."),
+    ],
+    save: Annotated[
+        int | None,
+        typer.Option(
+            "--save",
+            min=1,
+            help="Review and save the numbered researched command.",
+        ),
+    ] = None,
+    yes: Annotated[
+        bool,
+        typer.Option("--yes", "-y", help="Save the selected command after preview."),
+    ] = False,
+) -> None:
+    """Research official online documentation without executing commands."""
+
+    console = Console()
+    try:
+        research = _research_help(question)
+    except (
+        ConfigurationError,
+        OnlineHelpError,
+        ProviderError,
+    ) as exc:
+        _exit_with_error(exc)
+
+    console.print(Panel(Text(research.explanation), title="Online documentation"))
+    if research.prerequisites:
+        console.print("[bold]Prerequisites / assumptions[/bold]")
+        for item in research.prerequisites:
+            console.print(f"- {item}")
+    if research.commands:
+        console.print("[bold]Useful commands (suggestions only; not executed)[/bold]")
+        for index, command in enumerate(research.commands, start=1):
+            sources = ", ".join(str(item) for item in command.source_indices)
+            console.print(
+                f"[cyan]{index}.[/cyan] {command.command}\n"
+                f"   {command.explanation}\n"
+                f"   Provenance: {command.provenance}; source(s): {sources}; "
+                f"risk: {command.risk_level.value}"
+            )
+            for warning in command.risk_notes:
+                console.print(f"   Warning: {warning}")
+    if research.warnings:
+        console.print("[bold yellow]Warnings[/bold yellow]")
+        for warning in research.warnings:
+            console.print(f"- {warning}")
+
+    console.print("[bold]Sources (retrieved online)[/bold]")
+    for index, document in enumerate(research.documents, start=1):
+        console.print(f"{index}. {document.title}\n   {document.url}")
+
+    if save is None:
+        if research.commands:
+            console.print(
+                "To review and save one result with its source URLs, rerun with "
+                "--save NUMBER."
+            )
+        return
+    if save > len(research.commands):
+        _exit_with_error(
+            OnlineHelpError(
+                f"Cannot save command {save}; the research returned "
+                f"{len(research.commands)} command(s)."
+            )
+        )
+
+    selected = research.commands[save - 1]
+    source_urls = [
+        research.documents[index - 1].url for index in selected.source_indices
+    ]
+    _save_command_workflow(
+        selected.command,
+        title=f"Researched: {question[:60]}",
+        notes=selected.explanation,
+        yes=yes,
+        no_ai=True,
+        source=CommandSource.RESEARCHED,
+        source_urls=source_urls,
+    )
 
 
 @app.command("show")

@@ -11,24 +11,30 @@ from cl_ai.config import Settings
 
 
 class QwenProvider(AIProvider):
-    """Translate CL-AI messages to a Qwen-compatible LangChain client."""
+    """Translate CL-AI messages to an OpenAI-compatible LangChain client.
+
+    The historical class name is retained for import compatibility. The configured
+    endpoint may be Qwen Cloud, NVIDIA NIM, or another compatible personal API.
+    """
 
     def __init__(self, settings: Settings, client: Any | None = None) -> None:
+        self._provider_name = settings.provider_display_name
         if client is not None:
             self._client = client
             return
         try:
             self._client = ChatOpenAI(
-                model=settings.qwen_model,
-                api_key=settings.qwen_api_key.get_secret_value(),
-                base_url=str(settings.qwen_base_url).rstrip("/"),
-                timeout=settings.qwen_timeout_seconds,
+                model=settings.model_name,
+                api_key=settings.api_key.get_secret_value(),
+                base_url=str(settings.base_url).rstrip("/"),
+                timeout=settings.timeout_seconds,
                 max_retries=2,
                 temperature=0.2,
             )
         except Exception as exc:
             raise ProviderError(
-                "Qwen client initialization failed. Check the API key, model ID, "
+                f"{settings.provider_display_name} client initialization failed. "
+                "Check the API key, model ID, "
                 "base URL, and installed provider dependencies."
             ) from exc
 
@@ -36,14 +42,16 @@ class QwenProvider(AIProvider):
         try:
             response = self._client.invoke([self._to_langchain(item) for item in messages])
         except Exception as exc:
+            provider_name = getattr(self, "_provider_name", "Qwen")
             raise ProviderError(
-                "Qwen request failed. Check your network, model ID, region, "
+                f"{provider_name} request failed. Check your network, model ID, region, "
                 "base URL, API-key permissions, and account quota."
             ) from exc
 
         content = self._extract_text(response)
         if not content:
-            raise ProviderError("Qwen returned an empty response.")
+            provider_name = getattr(self, "_provider_name", "Qwen")
+            raise ProviderError(f"{provider_name} returned an empty response.")
         return content
 
     @staticmethod

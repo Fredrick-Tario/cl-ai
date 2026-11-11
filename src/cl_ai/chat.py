@@ -17,6 +17,13 @@ cost-incurring actions, and never claim that a suggested command was executed.
 EXIT_WORDS = {"exit", "quit", "/exit", "/quit"}
 
 
+def is_cl_ai_shell_command(text: str) -> bool:
+    """Recognize CL-AI CLI invocations without treating them as model prompts."""
+
+    normalized = text.strip().lower()
+    return normalized == "cl-ai" or normalized.startswith("cl-ai ")
+
+
 class PromptReader(Protocol):
     """Small prompt interface that keeps the chat loop easy to test."""
 
@@ -59,6 +66,7 @@ def run_chat(
     *,
     console: Console | None = None,
     prompt_reader: PromptReader | None = None,
+    provider_name: str = "Qwen Cloud",
 ) -> None:
     """Run the terminal chat until the user exits or closes input."""
 
@@ -66,7 +74,7 @@ def run_chat(
     reader = prompt_reader or PromptSession()
     conversation = Conversation(provider, max_requests)
 
-    output.print("[bold cyan]CL-AI v0.1[/bold cyan] | Provider: Qwen Cloud")
+    output.print(f"[bold cyan]CL-AI v0.1[/bold cyan] | Provider: {provider_name}")
     output.print("Type [bold]exit[/bold] to return to your shell.")
 
     while True:
@@ -81,6 +89,12 @@ def run_chat(
         if text.lower() in EXIT_WORDS:
             output.print("Goodbye.")
             return
+        if is_cl_ai_shell_command(text):
+            output.print(
+                "[bold green]CL-AI:[/bold green] That is a CL-AI terminal command. "
+                "Exit chat and run it in Git Bash; it was not sent to the AI model."
+            )
+            continue
 
         try:
             answer = conversation.ask(text)

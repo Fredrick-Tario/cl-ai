@@ -2,6 +2,7 @@ from typer.testing import CliRunner
 
 from cl_ai.ai.schemas import CommandComponent, CommandDocumentation, RiskLevel
 from cl_ai.cli import app
+from cl_ai.helpme import HelpCommand, HelpResearch, WebDocument
 from cl_ai.vault.documenter import DocumentationGenerationError
 
 
@@ -283,4 +284,102 @@ def test_documentation_failure_does_not_save(tmp_path, monkeypatch) -> None:
     assert failed.exit_code == 1
     assert "nothing was saved" in failed.output
     assert "No commands are saved" in listed.output
+
+
+def test_find_returns_only_persisted_matches_with_details(tmp_path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    environment = {"CLAI_DATA_DIR": str(tmp_path / "data")}
+    runner.invoke(
+        app,
+        ["save", "docker compose ps", "--title", "Compose status", "--yes", "--no-ai"],
+        env=environment,
+    )
+
+    found = runner.invoke(app, ["find", "compose status"], env=environment)
+    missing = runner.invoke(app, ["find", "kubectl rollout"], env=environment)
+
+    assert found.exit_code == 0
+    assert "docker compose ps" in found.output
+    assert "Saved only; not tested" in found.output
+    assert "pasted" in found.output
+    assert missing.exit_code == 0
+    assert "did not generate a replacement" in missing.output
+    assert "kubectl" not in missing.output
+
+
+def test_find_rejects_blank_query(tmp_path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    result = runner.invoke(
+        app,
+        ["find", "   "],
+        env={"CLAI_DATA_DIR": str(tmp_path / "data")},
+    )
+
+    assert result.exit_code == 1
+    assert "must not be blank" in result.output
+
+
+def test_helpme_displays_real_sources_and_can_save_researched_command(
+    tmp_path, monkeypatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    environment = {"CLAI_DATA_DIR": str(tmp_path / "data")}
+    research = HelpResearch(
+        explanation="Import an existing object into Terraform state.",
+        prerequisites=["Create the resource block first."],
+        commands=[
+            HelpCommand(
+                command="terraform import ADDRESS ID",
+                explanation="Associate the remote object with an address.",
+                provenance="documented_example",
+                source_indices=[1],
+                risk_level="medium",
+                risk_notes=["Back up state first."],
+            )
+        ],
+        warnings=["Review the state change."],
+        documents=[
+            WebDocument(
+                title="Terraform import",
+                url="https://developer.hashicorp.com/terraform/cli/commands/import",
+                text="Official import documentation text.",
+            )
+        ],
+    )
+    monkeypatch.setattr("cl_ai.cli._research_help", lambda question: research)
+
+    result = runner.invoke(
+        app,
+        ["helpme", "terraform import", "--save", "1", "--yes"],
+        env=environment,
+    )
+    shown = runner.invoke(app, ["show", "1"], env=environment)
+
+    assert result.exit_code == 0
+    assert "Online documentation" in result.output
+    assert "developer.hashicorp.com" in result.output
+    assert "Saved command #1" in result.output
+    assert shown.exit_code == 0
+    assert "researched" in shown.output
+    assert "developer.hashicorp.com" in shown.output
+
+
+def test_nonstandard_helpme_alias_is_supported(monkeypatch) -> None:
+    research = HelpResearch(
+        explanation="Official explanation.",
+        documents=[
+            WebDocument(
+                title="Git restore",
+                url="https://git-scm.com/docs/git-restore",
+                text="Official documentation text long enough for this test.",
+            )
+        ],
+    )
+    monkeypatch.setattr("cl_ai.cli._research_help", lambda question: research)
+
+    result = runner.invoke(app, ["-helpme", "What does git restore do?"])
+
+    assert result.exit_code == 0
+    assert "Official explanation" in result.output
+    assert "git-scm.com/docs/git-restore" in result.output
 
