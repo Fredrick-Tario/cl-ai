@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 import json
+import re
 
 from cl_ai.storage import Database, DatabaseError
 from cl_ai.vault.models import CommandCreate, CommandRecord
@@ -13,12 +14,13 @@ def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def _record_from_row(row) -> CommandRecord:
+def _record_from_row(row, source_urls: list[str] | None = None) -> CommandRecord:
     data = dict(row)
     try:
         data["flag_breakdown"] = json.loads(data["flag_breakdown"] or "[]")
         data["tags"] = json.loads(data["tags"] or "[]")
         data["risk_notes"] = json.loads(data["risk_notes"] or "[]")
+        data["source_urls"] = source_urls or []
         return CommandRecord.model_validate(data)
     except (json.JSONDecodeError, ValueError, TypeError) as exc:
         raise DatabaseError(
@@ -82,22 +84,54 @@ class CommandRepository:
             row = connection.execute(
                 "SELECT * FROM commands WHERE id = ?", (cursor.lastrowid,)
             ).fetchone()
-        return _record_from_row(row)
+            for url in command.source_urls:
+                connection.execute(
+                    """
+                    INSERT OR IGNORE INTO command_sources (
+                        command_id, url, created_at
+                    ) VALUES (?, ?, ?)
+                    """,
+                    (cursor.lastrowid, url, timestamp),
+                )
+        return _record_from_row(row, command.source_urls)
+
+    def _source_urls(self, connection, command_id: int) -> list[str]:
+        rows = connection.execute(
+            "SELECT url FROM command_sources WHERE command_id = ? ORDER BY id",
+            (command_id,),
+        ).fetchall()
+        return [row["url"] for row in rows]
 
     def get(self, command_id: int) -> CommandRecord | None:
         with self.database.connection() as connection:
             row = connection.execute(
                 "SELECT * FROM commands WHERE id = ?", (command_id,)
             ).fetchone()
-        return _record_from_row(row) if row is not None else None
+            urls = self._source_urls(connection, command_id) if row is not None else []
+        return _record_from_row(row, urls) if row is not None else None
 
-    def list(self, limit: int = 50) -> list[CommandRecord]:
+    def list(
+        self, limit: int = 50, *, category: str | None = None
+    ) -> list[CommandRecord]:
         with self.database.connection() as connection:
-            rows = connection.execute(
-                "SELECT * FROM commands ORDER BY created_at DESC, id DESC LIMIT ?",
-                (limit,),
-            ).fetchall()
-        return [_record_from_row(row) for row in rows]
+            if category:
+                rows = connection.execute(
+                    """
+                    SELECT * FROM commands
+                    WHERE category IS NOT NULL AND lower(category) = lower(?)
+                    ORDER BY created_at DESC, id DESC LIMIT ?
+                    """,
+                    (category, limit),
+                ).fetchall()
+            else:
+                rows = connection.execute(
+                    "SELECT * FROM commands ORDER BY created_at DESC, id DESC LIMIT ?",
+                    (limit,),
+                ).fetchall()
+            return [
+                _record_from_row(row, self._source_urls(connection, row["id"]))
+                for row in rows
+            ]
 
     def find_exact(self, command_text: str) -> list[CommandRecord]:
         with self.database.connection() as connection:
@@ -110,6 +144,63 @@ class CommandRepository:
                 (command_text,),
             ).fetchall()
         return [_record_from_row(row) for row in rows]
+
+    def search(
+        self,
+        query: str,
+        *,
+        category: str | None = None,
+        limit: int = 10,
+    ) -> list[CommandRecord]:
+        """Search only persisted records using bounded, escaped FTS terms."""
+
+        stop_words = {
+            "a", "an", "and", "command", "did", "do", "find", "for", "how",
+            "i", "me", "my", "of", "the", "to", "use", "used", "what",
+        }
+        terms = [
+            term.casefold()
+            for term in re.findall(r"[A-Za-z0-9_.:-]+", query)
+            if len(term) > 1 and term.casefold() not in stop_words
+        ]
+        terms = list(dict.fromkeys(terms))[:12]
+        if not terms:
+            return []
+        match_query = " OR ".join(f'"{term.replace(chr(34), "")}"*' for term in terms)
+
+        sql = """
+            SELECT commands.*
+            FROM commands_fts
+            JOIN commands ON commands.id = commands_fts.rowid
+            WHERE commands_fts MATCH ?
+        """
+        parameters: list[object] = [match_query]
+        if category:
+            sql += " AND commands.category IS NOT NULL AND lower(commands.category) = lower(?)"
+            parameters.append(category)
+        sql += " ORDER BY bm25(commands_fts), commands.updated_at DESC LIMIT ?"
+        parameters.append(min(limit * 5, 250))
+
+        with self.database.connection() as connection:
+            rows = connection.execute(sql, parameters).fetchall()
+            minimum_matches = 1 if len(terms) == 1 else 2
+            records: list[CommandRecord] = []
+            for row in rows:
+                searchable = " ".join(
+                    str(row[field] or "").casefold()
+                    for field in ("command_text", "title", "description", "tags")
+                )
+                if sum(term in searchable for term in terms) < minimum_matches:
+                    continue
+                records.append(
+                    _record_from_row(
+                        row,
+                        self._source_urls(connection, row["id"]),
+                    )
+                )
+                if len(records) >= limit:
+                    break
+            return records
 
     def update(
         self,
@@ -134,7 +225,8 @@ class CommandRepository:
             row = connection.execute(
                 "SELECT * FROM commands WHERE id = ?", (command_id,)
             ).fetchone()
-        return _record_from_row(row)
+            urls = self._source_urls(connection, command_id)
+        return _record_from_row(row, urls)
 
     def clear_documentation(self, command_id: int) -> None:
         with self.database.connection() as connection:

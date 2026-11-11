@@ -63,3 +63,38 @@ def test_local_settings_do_not_require_qwen(tmp_path: Path, monkeypatch) -> None
 
     assert settings.database_path == data_dir / "cl_ai.db"
 
+
+def test_nvidia_nim_uses_generic_openai_compatible_settings(tmp_path: Path) -> None:
+    env_file = tmp_path / ".env"
+    env_file.write_text(
+        "AI_PROVIDER=nvidia_nim\n"
+        "AI_API_KEY=private-test-value\n"
+        "AI_BASE_URL=https://integrate.api.nvidia.com/v1\n"
+        "AI_MODEL=test/nim-model\n",
+        encoding="utf-8",
+    )
+
+    settings = load_settings(env_file)
+
+    assert settings.provider_display_name == "NVIDIA NIM"
+    assert settings.model_name == "test/nim-model"
+    assert str(settings.base_url).startswith("https://integrate.api.nvidia.com")
+    assert "private-test-value" not in repr(settings)
+
+
+def test_blank_generic_values_fall_back_to_legacy_qwen_settings(tmp_path: Path) -> None:
+    env_file = tmp_path / ".env"
+    env_file.write_text(
+        "AI_PROVIDER=qwen\n"
+        "AI_API_KEY=\nAI_BASE_URL=\nAI_MODEL=\n"
+        "QWEN_API_KEY=legacy-private-value\n"
+        "QWEN_BASE_URL=https://example.invalid/v1\n"
+        "QWEN_MODEL=legacy-model\n",
+        encoding="utf-8",
+    )
+
+    settings = load_settings(env_file)
+
+    assert settings.model_name == "legacy-model"
+    assert settings.api_key.get_secret_value() == "legacy-private-value"
+

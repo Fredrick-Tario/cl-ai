@@ -46,6 +46,7 @@ class CommandCreate(BaseModel):
     verification_state: VerificationState = VerificationState.SAVED
     working_directory: str | None = None
     shell: str | None = None
+    source_urls: list[str] = Field(default_factory=list)
 
     @field_validator("command_text")
     @classmethod

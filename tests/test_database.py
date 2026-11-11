@@ -66,3 +66,37 @@ def test_version_one_database_is_migrated_without_losing_commands(tmp_path) -> N
     assert version == SCHEMA_VERSION
     assert row == ("git status", "[]", "[]")
 
+
+def test_version_two_database_builds_search_index(tmp_path) -> None:
+    path = tmp_path / "cl_ai.db"
+    with sqlite3.connect(path) as connection:
+        connection.executescript(
+            """
+            CREATE TABLE commands (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, command_text TEXT NOT NULL,
+                title TEXT, notes TEXT, category TEXT, subcategory TEXT,
+                description TEXT, flag_breakdown TEXT NOT NULL DEFAULT '[]',
+                tags TEXT NOT NULL DEFAULT '[]', risk_level TEXT, risk_notes TEXT NOT NULL DEFAULT '[]',
+                documentation_source TEXT, ai_model TEXT, documented_at TEXT,
+                source TEXT NOT NULL, verification_state TEXT NOT NULL,
+                working_directory TEXT, shell TEXT, created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            );
+            INSERT INTO commands (
+                command_text, title, tags, source, verification_state, created_at, updated_at
+            ) VALUES (
+                'docker compose ps', 'Compose status', '["docker"]', 'pasted', 'saved',
+                '2026-01-01T00:00:00+00:00', '2026-01-01T00:00:00+00:00'
+            );
+            PRAGMA user_version = 2;
+            """
+        )
+
+    Database(path).initialize()
+
+    with sqlite3.connect(path) as connection:
+        indexed = connection.execute(
+            "SELECT rowid FROM commands_fts WHERE commands_fts MATCH 'docker'"
+        ).fetchall()
+    assert indexed == [(1,)]
+

@@ -137,3 +137,51 @@ def test_changing_command_text_clears_stale_documentation(tmp_path) -> None:
     assert updated.documentation_source is DocumentationSource.MANUAL
     assert updated.ai_model is None
 
+
+def test_natural_language_search_uses_saved_fields_and_category(tmp_path) -> None:
+    vault = build_vault(tmp_path / "cl_ai.db")
+    terraform = CommandDocumentation(
+        title="Inspect saved Terraform plan",
+        category="Terraform",
+        subcategory="Inspection",
+        description="Shows a previously created infrastructure plan.",
+        flag_breakdown=[],
+        tags=["terraform", "plan", "inspect"],
+        risk_level=RiskLevel.LOW,
+        risk_notes=[],
+    )
+    docker = CommandDocumentation(
+        title="Inspect Compose services",
+        category="Docker",
+        subcategory="Status",
+        description="Shows running Compose services.",
+        flag_breakdown=[],
+        tags=["docker", "compose"],
+        risk_level=RiskLevel.LOW,
+        risk_notes=[],
+    )
+    expected = vault.save("terraform show tfplan", documentation=terraform)
+    vault.save("docker compose ps", documentation=docker)
+
+    matches = vault.search(
+        "What did I use to inspect my infrastructure plan?",
+        category="terraform",
+    )
+
+    assert [record.id for record in matches] == [expected.id]
+    assert vault.search("a command that was never saved") == []
+
+
+def test_researched_source_urls_survive_restart(tmp_path) -> None:
+    database_path = tmp_path / "cl_ai.db"
+    saved = build_vault(database_path).save(
+        "terraform import ADDRESS ID",
+        source_urls=["https://developer.hashicorp.com/terraform/cli/commands/import"],
+    )
+
+    reopened = build_vault(database_path).get(saved.id)
+
+    assert reopened.source_urls == [
+        "https://developer.hashicorp.com/terraform/cli/commands/import"
+    ]
+
