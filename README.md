@@ -41,18 +41,51 @@ cl-ai list
 
 A saved command has a reviewable record that may include its exact text, title, description, important flags, tags, risk level, source, working directory, timestamp, and verification status. **Saved does not mean executed or verified.**
 
-<!-- When your REAL terminal screenshots are ready, add them to
-     assets/screenshots/ and uncomment the following lines.
+### Feature Showcase
 
-![AI-generated command documentation](assets/screenshots/ai-documentation.png)
-![Command Vault and search](assets/screenshots/command-vault.png)
-![Official documentation help](assets/screenshots/online-help.png)
--->
+A quick look at CL-AI v0.1 working with **Linux, Docker, Terraform, Kubernetes, and Azure**. All screenshots are from the running terminal application; personal machine details and local paths have been obscured.
+
+**01 · Ask — Learn in the terminal**
+
+Ask technical questions about real DevOps workflows without leaving Git Bash or VS Code.
+
+<img src="assets/screenshots/01-ai-chat.png" alt="CL-AI interactive AI chat explaining Terraform remote state and state locking" width="960">
+
+**02 · Document — Understand a complex command before saving**
+
+AI-generated documentation includes flag breakdowns, categories, tags, and risk notes. The command is **saved, not executed**.
+
+<img src="assets/screenshots/02-ai-command-documentation.png" alt="CL-AI AI-generated documentation preview for Kubernetes rollout status" width="960">
+
+**03 · Organize — Your local Command Vault**
+
+Keep commands for different technologies in a persistent SQLite library and inspect their metadata.
+
+<img src="assets/screenshots/03-command-vault.png" alt="CL-AI saved command list and detailed Azure AKS record" width="960">
+
+**04 · Find — Retrieve commands you previously saved**
+
+Search your existing Vault using a term like `terraform`; results are real local records, not AI-invented commands.
+
+<img src="assets/screenshots/04-command-search-terraform.png" alt="CL-AI searching saved Terraform commands and returning a local command record" width="960">
+
+<details>
+<summary>Another search example — find payment-service commands across Docker and Kubernetes</summary>
+
+<img src="assets/screenshots/05-command-search-payment.png" alt="CL-AI payment search returning Docker Compose and Kubernetes commands" width="960">
+
+</details>
+
+**05 · Research — Look up official documentation**
+
+Use `helpme` to retrieve explanations, safety context, and source links from public documentation.
+
+<img src="assets/screenshots/06-official-documentation-help.png" alt="CL-AI answering a Docker Compose question with documentation citations and links" width="960">
+
 
 ## How It Works
 
 ```mermaid
-
 flowchart TD
     User["Git Bash /<br/>VS Code Terminal"]
     CLI["CL-AI CLI<br/>Typer + Rich"]
@@ -79,7 +112,6 @@ flowchart TD
     Bash --> Vault
     Help --> Docs
     Help --> AI
-
 ```
 
 **Python handles** command capture, validation, risk checks, and local storage. **The AI model handles** explanations and structured summaries. **You control** what is saved and which commands are actually run in your terminal.
