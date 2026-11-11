@@ -6,7 +6,7 @@ from pathlib import Path
 import sqlite3
 
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS commands (
@@ -41,6 +41,36 @@ ON commands(command_text);
 
 CREATE INDEX IF NOT EXISTS idx_commands_created_at
 ON commands(created_at DESC);
+
+CREATE TABLE IF NOT EXISTS command_sources (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    command_id INTEGER NOT NULL REFERENCES commands(id) ON DELETE CASCADE,
+    url TEXT NOT NULL,
+    title TEXT,
+    created_at TEXT NOT NULL,
+    UNIQUE(command_id, url)
+);
+
+CREATE VIRTUAL TABLE IF NOT EXISTS commands_fts USING fts5(
+    command_text, title, description, tags, content='commands', content_rowid='id'
+);
+
+CREATE TRIGGER IF NOT EXISTS commands_fts_insert AFTER INSERT ON commands BEGIN
+    INSERT INTO commands_fts(rowid, command_text, title, description, tags)
+    VALUES (new.id, new.command_text, new.title, new.description, new.tags);
+END;
+
+CREATE TRIGGER IF NOT EXISTS commands_fts_delete AFTER DELETE ON commands BEGIN
+    INSERT INTO commands_fts(commands_fts, rowid, command_text, title, description, tags)
+    VALUES ('delete', old.id, old.command_text, old.title, old.description, old.tags);
+END;
+
+CREATE TRIGGER IF NOT EXISTS commands_fts_update AFTER UPDATE ON commands BEGIN
+    INSERT INTO commands_fts(commands_fts, rowid, command_text, title, description, tags)
+    VALUES ('delete', old.id, old.command_text, old.title, old.description, old.tags);
+    INSERT INTO commands_fts(rowid, command_text, title, description, tags)
+    VALUES (new.id, new.command_text, new.title, new.description, new.tags);
+END;
 """
 
 MIGRATIONS: dict[int, str] = {
@@ -55,6 +85,36 @@ MIGRATIONS: dict[int, str] = {
         ALTER TABLE commands ADD COLUMN documentation_source TEXT;
         ALTER TABLE commands ADD COLUMN ai_model TEXT;
         ALTER TABLE commands ADD COLUMN documented_at TEXT;
+    """,
+    2: """
+        CREATE TABLE command_sources (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            command_id INTEGER NOT NULL REFERENCES commands(id) ON DELETE CASCADE,
+            url TEXT NOT NULL,
+            title TEXT,
+            created_at TEXT NOT NULL,
+            UNIQUE(command_id, url)
+        );
+        CREATE VIRTUAL TABLE commands_fts USING fts5(
+            command_text, title, description, tags,
+            content='commands', content_rowid='id'
+        );
+        INSERT INTO commands_fts(rowid, command_text, title, description, tags)
+            SELECT id, command_text, title, description, tags FROM commands;
+        CREATE TRIGGER commands_fts_insert AFTER INSERT ON commands BEGIN
+            INSERT INTO commands_fts(rowid, command_text, title, description, tags)
+            VALUES (new.id, new.command_text, new.title, new.description, new.tags);
+        END;
+        CREATE TRIGGER commands_fts_delete AFTER DELETE ON commands BEGIN
+            INSERT INTO commands_fts(commands_fts, rowid, command_text, title, description, tags)
+            VALUES ('delete', old.id, old.command_text, old.title, old.description, old.tags);
+        END;
+        CREATE TRIGGER commands_fts_update AFTER UPDATE ON commands BEGIN
+            INSERT INTO commands_fts(commands_fts, rowid, command_text, title, description, tags)
+            VALUES ('delete', old.id, old.command_text, old.title, old.description, old.tags);
+            INSERT INTO commands_fts(rowid, command_text, title, description, tags)
+            VALUES (new.id, new.command_text, new.title, new.description, new.tags);
+        END;
     """,
 }
 

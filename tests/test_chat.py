@@ -51,3 +51,22 @@ def test_chat_exits_without_calling_provider() -> None:
     assert provider.calls == []
     assert "Goodbye" in console.export_text()
 
+
+def test_cli_command_in_chat_is_not_sent_to_provider() -> None:
+    provider = FakeProvider()
+    console = Console(record=True, force_terminal=False)
+
+    run_chat(
+        provider,
+        max_requests=2,
+        console=console,
+        prompt_reader=ScriptedPrompt(["cl-ai list", "exit"]),
+        provider_name="NVIDIA NIM",
+    )
+
+    output = console.export_text()
+    assert provider.calls == []
+    assert "run it in Git Bash" in output
+    assert "not sent" in output
+    assert "Provider: NVIDIA NIM" in output
+

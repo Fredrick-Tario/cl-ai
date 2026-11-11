@@ -1,5 +1,7 @@
 """Command Vault rules independent of the terminal UI."""
 
+from __future__ import annotations
+
 from datetime import datetime, timezone
 import os
 from pathlib import Path
@@ -77,6 +79,7 @@ class CommandVault:
         documentation_source: DocumentationSource | None = None,
         ai_model: str | None = None,
         source: CommandSource = CommandSource.PASTED,
+        source_urls: list[str] | None = None,
     ) -> CommandRecord:
         self.ensure_safe(command_text)
         duplicate = self.find_duplicate(command_text)
@@ -112,6 +115,7 @@ class CommandVault:
                 source=source,
                 working_directory=context_directory,
                 shell=context_shell,
+                source_urls=source_urls or [],
             )
         )
 
@@ -121,8 +125,28 @@ class CommandVault:
             raise CommandNotFoundError(command_id)
         return record
 
-    def list(self, limit: int = 50) -> list[CommandRecord]:
-        return self.repository.list(limit)
+    def list(
+        self, limit: int = 50, *, category: str | None = None
+    ) -> list[CommandRecord]:
+        return self.repository.list(limit, category=category)
+
+    def search(
+        self,
+        query: str,
+        *,
+        category: str | None = None,
+        limit: int = 10,
+    ) -> list[CommandRecord]:
+        normalized = query.strip()
+        if not normalized:
+            raise VaultError("Search query must not be blank.")
+        if len(normalized) > 500:
+            raise VaultError("Search query is too long; maximum is 500 characters.")
+        return self.repository.search(
+            normalized,
+            category=category.strip() if category and category.strip() else None,
+            limit=limit,
+        )
 
     def update(
         self,
