@@ -303,8 +303,6 @@ cl-ai find "git status"
 | **v0.4 — Troubleshooting Agent** | Permission-based, evidence-grounded diagnostic assistance | Planned |
 | **v1.0 — Stable Release** | Packaging, deeper hardening, recovery/export, and end-to-end reliability | Planned |
 
-The detailed specifications and acceptance criteria are in [**CL-AI Development Plan**](docs/CL-AI-PLAN.md).
-
 ---
 
 **Built as a hands-on exploration of AI-assisted developer tooling, practical DevOps workflows, and reliable, human-reviewed automation.**
